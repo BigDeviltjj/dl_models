@@ -4,8 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import utils
 
-image1 = utils.load_image('./tiger.jpeg')
-image2 = utils.load_image('./puzzle.jpeg')
+image1 = utils.load_image('./test_pic/tiger.jpeg')
+image2 = utils.load_image('./test_pic/puzzle.jpeg')
 image = np.concatenate((image1[None,:,:,:],image2[None,:,:,:]),axis = 0)
 
 plt.figure()
