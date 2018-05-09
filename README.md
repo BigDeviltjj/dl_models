@@ -3,7 +3,10 @@ Common deep learning models implemented by tensorflow
 
 For ResnetV1:
 
-run cifar10_download_and_extract.py to download the cifar10 dataset. Then run cifar10_main --data-dir='the path where you save your dataset' to use Resnet to train on cifar10.
+cifar10:run cifar10_download_and_extract.py to download the cifar10 dataset. Then run cifar10_main --data-dir='the path where you save your dataset' to use Resnet to train on cifar10.
+
+Imagenet:You will need to download the ImageNet dataset and convert it to TFRecord format. Follow along with the Inception guide in order to prepare the dataset. Then train the model as follow:python imagenet_main.py --data_dir='the path where you save your dataset'.
+
 
 For vgg16:
 
