@@ -87,6 +87,7 @@ def parse_record(raw_record,is_training):
     depth_major = tf.reshape(record_vector[1:_RECORD_BYTES],[_NUM_CHANNELS,_HEIGHT,_WIDTH])
     image = tf.cast(tf.transpose(depth_major,[1,2,0]),tf.float32)
     image = preprocess_image(image,is_training)
+    
     return image, label
 
 def input_fn(is_training,data_dir,batch_size,num_epochs=1):

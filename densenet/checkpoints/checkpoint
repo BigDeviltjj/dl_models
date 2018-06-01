@@ -1,0 +1,6 @@
+model_checkpoint_path: "cifar10-densenet_-53176"
+all_model_checkpoint_paths: "cifar10-densenet_-50048"
+all_model_checkpoint_paths: "cifar10-densenet_-50830"
+all_model_checkpoint_paths: "cifar10-densenet_-51612"
+all_model_checkpoint_paths: "cifar10-densenet_-52394"
+all_model_checkpoint_paths: "cifar10-densenet_-53176"
