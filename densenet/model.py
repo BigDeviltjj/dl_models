@@ -17,6 +17,8 @@ def parse_record_fn(value,is_training):
     image = tf.cast(tf.transpose(image,[1,2,0]),tf.float32)
     
     if is_training:
+        image = tf.image.resize_image_with_crop_or_pad(image,cfg.HEIGHT+8,cfg.WIDTH+8)
+        image = tf.random_crop(image,[cfg.HEIGHT,cfg.WIDTH,cfg.CHANNELS])
         image = tf.image.random_flip_left_right(image)
     #image = tf.image.per_image_standardization(image)
     image = image/128. - 1
@@ -157,7 +159,7 @@ class Densenet():
             self.l2_loss = cfg.WEIGHT_DECAY * tf.add_n(
                             [tf.nn.l2_loss(tf.cast(v,tf.float32)) 
                              for v in tf.trainable_variables()
-                             if 'batch_normalization' not in v.name])
+                             if 'weights' in v.name])
             entropy = tf.nn.softmax_cross_entropy_with_logits(labels=self.labels,logits=self.logits)
             self.loss = tf.reduce_mean(entropy) + self.l2_loss 
 
@@ -192,6 +194,10 @@ class Densenet():
             tf.summary.histogram('histogram loss', self.loss)
             tf.summary.scalar('learning_rate',self.lr)
             self.summary_op = tf.summary.merge_all()
+            val_summaries = []
+            val_summaries.append(tf.summary.scalar("val_loss",self.loss))
+            val_summaries.append(tf.summary.scalar('val_accuracy',self.accuracy))
+            self.val_summary_op = tf.summary.merge(val_summaries)
 
 
     def build_net(self):
@@ -210,7 +216,7 @@ class Densenet():
         batches = 0
         try:
             while True:
-                accuracy_batch,summaries = sess.run([self.accuracy,self.summary_op],feed_dict=feed)
+                accuracy_batch,summaries = sess.run([self.accuracy,self.val_summary_op],feed_dict=feed)
                 writer.add_summary(summaries, global_step=step)
                 total_correct_preds += accuracy_batch
                 batches += 1
@@ -232,7 +238,7 @@ class Densenet():
         tfconfig = tf.ConfigProto(allow_soft_placement=True)
         tfconfig.gpu_options.allow_growth=True
         writer = tf.summary.FileWriter('./graphs/densenet', tf.get_default_graph())
-
+        val_writer = tf.summary.FileWriter('./graphs/densenet_val',tf.get_default_graph())
         with tf.Session(config = tfconfig) as sess:
 
             sess.run(tf.global_variables_initializer())
@@ -268,8 +274,9 @@ class Densenet():
                 saver.save(sess, 'checkpoints/cifar10-densenet_', step)
                 print('Average loss at epoch {0}: {1}'.format(epoch, total_loss/n_batches))
                 print('Took: {0} seconds'.format(time.time() - start_time))
-                self.eval(sess,epoch,writer,step)
+                self.eval(sess,epoch,val_writer,step)
         writer.close()
+        val_writer.close()
         print("train finished\n")
 
     def test(self):
