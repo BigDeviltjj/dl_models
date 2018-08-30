@@ -1,2 +1,3 @@
 resnetV1/__pycache__/
-
+/ssd/tfrecords/
+*.pyc
