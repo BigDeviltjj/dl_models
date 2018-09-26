@@ -854,7 +854,7 @@ def resnet_v1_101_fpn_rcnn(Symbol):
 
             aux_dict = {
                 'op_type': 'pyramid_proposal', 'name':'rois',
-                'im_info': iminfo,'feat_stride':tuple(cfg.network.RPN_FEAT_STRIDE),
+                'im_info': im_info,'feat_stride':tuple(cfg.network.RPN_FEAT_STRIDE),
                 'scales':tuple(cfg.network.ANCHOR_SCALES), 'ratios': tuple(cfg.network.ANCHOR_RATIOS),
                 'rpn_pre_nms_top_n':cfg.TRAIN.RPN_PRE_NMS_TOP_N, 'rpn_post_nms_top_':cfg.TRAIN.RPN_POST_NMS_TOP_N,
                 'threshold': cfg.TRAIN.RPN_NMS_THRESH,'rpn_min_size': cfg.TRAIN.RPN_MIN_SIZE
