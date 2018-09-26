@@ -1,15 +1,16 @@
 import argparse
 import mxnet as mx
 import numpy as np
-from config.config import config, update_config
 import os
 import sys
 import shutil
 import pprint
+from config.config import config, update_config
 curr_path = os.path.dirname(__file__)
 sys.path.insert(0,os.path.join(os.path.dirname(__file__),'lib'))
 from utils.create_logger import create_logger
-from symbols import *
+from utils.load_data import load_gt_roidb, merge_roidb, filter_roidb
+from symbols import resnet_v1_101_fpn_rcnn
 def parse_args():
     parser = argparse.ArgumentParser(description='train fpn network')
     parser.add_argument('--cfg',help='configure file name',type = str, default = './cfgs/resnet_v1_101_coco_trainval_fpn_end2end_ohem.yaml')
@@ -25,7 +26,7 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     prefix = os.path.join(final_output_path, prefix)
 
     shutil.copy2(os.path.join(curr_path, 'symbols',config.symbol+'.py'),final_output_path)
-    sym_instance = eval(config.symbol + '.' + config.symbol)()
+    sym_instance = resnet_v1_101_fpn_rcnn.resnet_v1_101_fpn_rcnn()
     sym = sym_instance.get_symbol(config, is_train = True)
 
     feat_pyramid_level = np.log2(config.network.RPN_FEAT_STRIDE).astype(int)
@@ -38,6 +39,13 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     logger.info('training config:{}\n'.format(pprint.pformat(config)))
 
     image_sets = [iset for iset in config.dataset.image_set.split('+')]
+    roidbs = [load_gt_roidb(config.dataset.dataset,image_set, config.dataset.root_path, config.dataset.dataset_path,
+                            flip = config.TRAIN.FLIP) for image_set in image_sets]
+        
+    roidb = merge_roidb(roidbs)
+    roidb = filter_roidb(roidb,config)
+    
+    train_data = PyramidAnchorIter
 
 def main():
     args = parse_args()

@@ -4,3 +4,6 @@ resnetV1/__pycache__/
 .params
 fpn/model/
 .vscode/*
+*.o
+*.pkl
+*.log
