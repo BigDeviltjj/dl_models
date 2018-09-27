@@ -11,7 +11,7 @@ def par_assign_anchor_wrapper(cfg, iroidb, feat_sym, feat_strides, anchor_scales
     data['gt_boxes'] = rpn_label['gt_boxes'][np.newaxis,:,:]
     feat_shape = [y[1] for y in [x.infer_shape(**data_shape) for x in feat_sym]]
     label = assign_pyramid_anchor(feat_shape, rpn_label['gt_boxes'],data['im_info'],cfg,
-                                  feat_strides, anchor_scales, anchor_ratios, allowd_border)
+                                  feat_strides, anchor_scales, anchor_ratios, allowed_border)
     return {'data':data,'label':label}
 class PyramidAnchorIterator(mx.io.DataIter):
 
@@ -31,6 +31,8 @@ class PyramidAnchorIterator(mx.io.DataIter):
         self.work_load_list = work_load_list
         self.feat_strides = feat_strides
         self.anchor_scales = anchor_scales
+        self.anchor_ratios = anchor_ratios
+
         self.allowed_border = allowed_border
         self.aspect_grouping = aspect_grouping
         self.size = len(roidb)
@@ -75,7 +77,7 @@ class PyramidAnchorIterator(mx.io.DataIter):
                 horz = (widths >= heights)
                 vert = np.logical_not(horz)
                 horz_inds = np.where(horz)[0]
-                ver_inds = np.where(ver_inds)[0]
+                ver_inds = np.where(vert)[0]
                 inds = np.hstack((np.random.permutation(horz_inds),np.random.permutation(ver_inds)))
                 extra = inds.shape[0] % self.batch_size
                 inds_ = np.reshape(inds[:-extra],(-1,self.batch_size))
@@ -109,16 +111,16 @@ class PyramidAnchorIterator(mx.io.DataIter):
     def infer_shape(self,max_data_shape = None, max_label_shape = None):
         if max_data_shape is None:
             max_data_shape = []
-        if max_label_shape is None
+        if max_label_shape is None:
             max_label_shape = []
-        max_shapes = {**max_data_shape, **max_label_shape}
+        max_shapes = dict(max_data_shape + max_label_shape)
         input_batch_size = max_shapes['data'][0]
         im_info = [[max_shapes['data'][2],max_shapes['data'][3],1.0]]
 
         feat_shape = [y[1] for y in [x.infer_shape(**max_shapes) for x in self.feat_sym]]   
         label = assign_pyramid_anchor(feat_shape, np.zeros((0,5)),im_info, self.cfg,
                                       self.feat_strides, self.anchor_scales, self.anchor_ratios, 
-                                      self.allow_border)
+                                      self.allowed_border)
         label = [label[k] for k in self.label_name]
         label_shape = [(k,tuple([input_batch_size] + list(v.shape[1:]))) for k,v in zip(self.label_name,label)]     
 

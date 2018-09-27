@@ -19,12 +19,12 @@ def resize(im,target_size, max_size, stride = 0,interpolation = cv2.INTER_LINEAR
         im_height = int(np.ceil(im.shape[0]/float(stride)) * stride)
         im_width = int(np.ceil(im.shape[1] / float(stride)) * stride)
         im_channel = im.shape[2]
-        paded_in = np.zeros((im_height,im_width,im_channel))
-        padded_in[:im.shape[0],:im.shape[1],:] = im
+        padded_im = np.zeros((im_height,im_width,im_channel))
+        padded_im[:im.shape[0],:im.shape[1],:] = im
         return padded_im, im_scale
     
-def transform(im, pixel_mean):
-    im_tensorf = np.zeros((1,3,im.shape[0],im.shape[1]))
+def transform(im, pixel_means):
+    im_tensor = np.zeros((1,3,im.shape[0],im.shape[1]))
     for i in range(3):
         im_tensor[0,i,:,:] = im[:,:,2-i] - pixel_means[2-i]
 
@@ -47,7 +47,7 @@ def get_image(roidb,config):
         im_tensor = transform(im,config.network.PIXEL_MEANS)
         processed_ims.append(im_tensor)
         im_info = [im_tensor.shape[2],im_tensor.shape[3],im_scale]
-        new_rec['boxes'] = clip_boxes(np.round(roi_rec['boxes'].copy() * imscale),im_info[:2])
+        new_rec['boxes'] = clip_boxes(np.round(roi_rec['boxes'].copy() * im_scale),im_info[:2])
         new_rec['im_info'] = im_info
         processed_roidb.append(new_rec)
     return processed_ims, processed_roidb

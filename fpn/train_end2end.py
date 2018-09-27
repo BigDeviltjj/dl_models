@@ -58,7 +58,7 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     max_data_shape.append(('gt_boxes',(config.TRAIN.BATCH_IMAGES,100,5)))
     print('providing maximum shape', max_data_shape, max_label_shape)
 
-    data_shape_dict = {**(train_data.provide_data_single),**(train_data.provide_label_single)}
+    data_shape_dict = dict(train_data.provide_data_single + train_data.provide_label_single)
     pprint.pprint(data_shape_dict)
     sym_instance.infer_shape(data_shape_dict)
 

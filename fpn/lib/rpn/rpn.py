@@ -1,6 +1,6 @@
 import numpy as np
 from utils.image import get_image
-from . import generate_anchor.generate_anchors
+from rpn.generate_anchor import generate_anchors
 from bbox.bbox_transform import bbox_overlaps, bbox_transform
 import numpy.random as npr
 
@@ -9,7 +9,7 @@ def get_rpn_batch(roidb,cfg):
 
     imgs, roidb = get_image(roidb,cfg)
     im_array = imgs[0]
-    im_info = np.array([roidb[0]['im_info']], type = np.float32)
+    im_info = np.array([roidb[0]['im_info']], dtype = np.float32)
 
     if roidb[0]['gt_classes'].size > 0:
         gt_inds = np.where(roidb[0]['gt_classes'] != 0)[0]
@@ -76,7 +76,7 @@ def assign_pyramid_anchor(feat_shapes, gt_boxes, im_info, cfg, feat_strides=(4,8
         labels = np.empty((len(inds_inside),),dtype = np.float32)
         labels.fill(-1)
 
-        fpn_anchors_fid = np.hstack((fpn_anchors_fid),len(inds_inside))
+        fpn_anchors_fid = np.hstack((fpn_anchors_fid,len(inds_inside)))
         fpn_anchors = np.vstack((fpn_anchors,anchors))
         fpn_labels = np.hstack((fpn_labels,labels))
         fpn_inds_inside.append(inds_inside)
@@ -90,18 +90,18 @@ def assign_pyramid_anchor(feat_shapes, gt_boxes, im_info, cfg, feat_strides=(4,8
         gt_max_overlaps = overlaps[gt_argmax_overlaps,np.arange(overlaps.shape[1])]
         gt_argmax_overlaps = np.where(overlaps == gt_max_overlaps)[0]
 
-        if not cfg.TRAIN.RPN_CLOBBER_POSITIVE:
+        if not cfg.TRAIN.RPN_CLOBBER_POSITIVES:
             fpn_labels[max_overlaps < cfg.TRAIN.RPN_NEGATIVE_OVERLAP] = 0
 
         fpn_labels[gt_argmax_overlaps] = 1
         fpn_labels[max_overlaps >= cfg.TRAIN.RPN_POSITIVE_OVERLAP] = 1
-        if cfg.TRAIN.RPN_CLOBBER_POSITIVE:
+        if cfg.TRAIN.RPN_CLOBBER_POSITIVES:
             fpn_labels[max_overlaps < cfg.TRAIN.RPN_NEGATIVE_OVERLAP] = 0
 
     else:
         fpn_labels[:] = 0
 
-    num_fg = fpn_labels.shape[0] if cfg.TRAIN.RPN_BATCH_SIZE ==-1 else int (cfg.TRAIN.RPN_FG.FRACTION * cfg.TRAIN.RPN_BATCH_SIZE)
+    num_fg = fpn_labels.shape[0] if cfg.TRAIN.RPN_BATCH_SIZE ==-1 else int (cfg.TRAIN.RPN_FG_FRACTION * cfg.TRAIN.RPN_BATCH_SIZE)
     fg_inds = np.where(fpn_labels >= 1)[0]
     if len(fg_inds) > num_fg:
         disable_inds = npr.choice(fg_inds, size = (len(fg_inds) - num_fg), replace = False)
@@ -155,7 +155,7 @@ def assign_pyramid_anchor(feat_shapes, gt_boxes, im_info, cfg, feat_strides=(4,8
         bbox_target_list.append(bbox_targets)
         bbox_weight_list.append(bbox_weights)
 
-    lael = {
+    label = {
         'label':np.concatenate(label_list,axis = 1),
         'bbox_target':np.concatenate(bbox_target_list, axis = 2),
         'bbox_weight':np.concatenate(bbox_weight_list,axis = 2)
