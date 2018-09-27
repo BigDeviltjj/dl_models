@@ -28,10 +28,10 @@ def bbox_pred(anchor, bbox):
     return pred_bboxes
 
 def clip_boxes(boxes, im_shape):
-    boxes[:,0] = np.maximum(np.minimum(boxes[:,0],im_shape[1] - 1), 0)
-    boxes[:,1] = np.maximum(np.minimum(boxes[:,1],im_shape[0] - 1), 0)
-    boxes[:,2] = np.maximum(np.minimum(boxes[:,2],im_shape[1] - 1), 0)
-    boxes[:,3] = np.maximum(np.minimum(boxes[:,3],im_shape[0] - 1), 0)
+    boxes[:,0::4] = np.maximum(np.minimum(boxes[:,0::4],im_shape[1] - 1), 0)
+    boxes[:,1::4] = np.maximum(np.minimum(boxes[:,1::4],im_shape[0] - 1), 0)
+    boxes[:,2::4] = np.maximum(np.minimum(boxes[:,2::4],im_shape[1] - 1), 0)
+    boxes[:,3::4] = np.maximum(np.minimum(boxes[:,3::4],im_shape[0] - 1), 0)
     return boxes
 
 def bbox_overlaps(bboxes,query_boxes):

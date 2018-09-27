@@ -10,7 +10,10 @@ curr_path = os.path.dirname(__file__)
 sys.path.insert(0,os.path.join(os.path.dirname(__file__),'lib'))
 from utils.create_logger import create_logger
 from utils.load_data import load_gt_roidb, merge_roidb, filter_roidb
+from utils.load_model import load_param
 from symbols import resnet_v1_101_fpn_rcnn
+from core.loader import PyramidAnchorIterator
+
 def parse_args():
     parser = argparse.ArgumentParser(description='train fpn network')
     parser.add_argument('--cfg',help='configure file name',type = str, default = './cfgs/resnet_v1_101_coco_trainval_fpn_end2end_ohem.yaml')
@@ -45,8 +48,28 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     roidb = merge_roidb(roidbs)
     roidb = filter_roidb(roidb,config)
     
-    train_data = PyramidAnchorIter
+    train_data = PyramidAnchorIterator(feat_sym, roidb, config,batch_size = input_batch_size, shuffle = config.TRAIN.SHUFFLE,
+                                   ctx = ctx, feat_strides = config.network.RPN_FEAT_STRIDE, anchor_scales = config.network.ANCHOR_SCALES,
+                                   anchor_ratios = config.network.ANCHOR_RATIOS, aspect_grouping = config.TRAIN.ASPECT_GROUPING,
+                                   allowed_border = np.inf)
 
+    max_data_shape = [('data',(config.TRAIN.BATCH_IMAGES,3,max([v[0] for v in config.SCALES]),max([v[1] for v in config.SCALES])))]
+    max_data_shape,max_label_shape = train_data.infer_shape(max_data_shape)
+    max_data_shape.append(('gt_boxes',(config.TRAIN.BATCH_IMAGES,100,5)))
+    print('providing maximum shape', max_data_shape, max_label_shape)
+
+    data_shape_dict = {**(train_data.provide_data_single),**(train_data.provide_label_single)}
+    pprint.pprint(data_shape_dict)
+    sym_instance.infer_shape(data_shape_dict)
+
+    if config.TRAIN.RESUME:
+        print('continue training from ',begin_epoch)
+        arg_params, aux_params = load_param(prefix, begin_epoch, convert = True)
+    else:
+        arg_params, aux_params = load_param(pretrained, epoch, convert = True)
+        sym_instance.init_weight(config, arg_params, aux_params)
+
+    sym_instance.check_parameter_shapes(arg_params, aux_params, data_shape_dict)
 def main():
     args = parse_args()
     print('called with argument:',args)
