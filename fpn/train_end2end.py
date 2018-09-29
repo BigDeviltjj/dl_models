@@ -13,7 +13,7 @@ from utils.load_data import load_gt_roidb, merge_roidb, filter_roidb
 from utils.load_model import load_param
 from symbols import resnet_v1_101_fpn_rcnn
 from core.loader import PyramidAnchorIterator
-
+from core import metric
 def parse_args():
     parser = argparse.ArgumentParser(description='train fpn network')
     parser.add_argument('--cfg',help='configure file name',type = str, default = './cfgs/resnet_v1_101_coco_trainval_fpn_end2end_ohem.yaml')
@@ -70,6 +70,49 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
         sym_instance.init_weight(config, arg_params, aux_params)
 
     sym_instance.check_parameter_shapes(arg_params, aux_params, data_shape_dict)
+    fixed_param_prefix = config.network.FIXED_PARAMS
+    data_names = [k[0] for k in train_data.provide_data_single]
+    label_names = [k[0] for k in tran_data.provide_label_single]
+
+    mod = Module(sym,data_names = data_names,label_names = label_names,
+                 logger = logger, context = ctx, fixed_param_prefix = fixed_param_prefix)
+        
+    rpn_eval_metric = metric.RPNAccMetric()
+    rpn_cls_metric = metric.RPNLogLossMetric()
+    rpn_bbox_metric = metric.RPNL1LossMetric()
+    rpn_fg_metric = metric.RPNFGFraction(config)
+    eval_metric = metric.RCNNAccMetric(config)
+    eval_fg_metric = metric.RCNNFGAccuracy(config)
+    cls_metric = metric.RCNNLogLossMetric(config)
+    bbox_metric = metric.RCNNL1LossMetric(config)
+    eval_metrics = mx.metric.CompositeEvalMetric()
+    for child_metric in [rpn_eval_metric, rpn_cls_metric, rpn_bbox_metric, rpn_fg_metric, eval_fg_metric, eval_metric, cls_metric, bbox_metric]:
+        eval_metrics.add(child_metric)
+    batch_end_callback = [mx.callback.Speedometer(train_data.batch_size,frequent = args.frequent)]
+    epoch_end_callback = [mx.callback.do_checkpoint(prefix, period = 1)]
+    base_lr = lr
+    lr_factor = config.TRAIN.lr_factor
+    lr_epoch = [float(epoch) for epoch in lr_step.split(',')]
+    lr_epoch_diff = [epoch - begin_epoch for epoch in lr_epoch if epoch > begin_epoch]
+    lr = base_lr * (lr_factor **(len(lr_epoch) - len(lr_epoch_diff)))
+    lr_iters = [int(epoch * len(roidb)/batch_size) for epoch in lr_epoch_diff]
+    print('lr',lr,'lr_epoch_diff',lr_epoch_diff,'lr_iters',lr_iters)
+    lr_scheduler = mxnet.lr_scheduler.MultiFactorScheduler(step = lr_iters,factor = lr_factor)
+    optimizer_params = {"momentum":config.TRAIN.momentum,
+                        'wd':config.TRAIN.wd,
+                        'learning_rate':lr,
+                        'lr_scheduler':lr_scheduler,
+                        'clip_gradient':None}
+        
+    if not isinstance(train_data,mx.io.PrefetchingIter):
+        train_data = mx.io.PrefetchingIter(train_data)
+
+    mod.fit(train_data,eval_metric = eval_metrics,epoch_end_callback=epoch_end_callback,
+            batch_end_callback = batch_end_callback, 
+            optimizer = 'sgd',optimizer_params = optimizer_params,
+            arg_params = arg_params, aux_params = aux_params, 
+            begin_epoch = begin_epoch,
+            num_epoch = end_epoch)
 def main():
     args = parse_args()
     print('called with argument:',args)
