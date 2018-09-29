@@ -115,7 +115,6 @@ class PyramidProposalOperator(mx.operator.CustomOp):
         
 
         proposals = proposals[order,:]
-        print(proposals[:2000,:])
         scores=scores[order]
 
         #step 6
@@ -128,7 +127,6 @@ class PyramidProposalOperator(mx.operator.CustomOp):
         if len(keep) < post_nms_topN:
             pad = np.random.choice(keep, size=post_nms_topN - len(keep))
             keep  = np.hstack((keep,pad))
-        print(keep,post_nms_topN,self._threshold)
         proposals = proposals[keep,:]
         scores = scores[keep]
 

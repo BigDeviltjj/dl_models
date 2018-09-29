@@ -843,6 +843,8 @@ class resnet_v1_101_fpn_rcnn(Symbol):
             rpn_bbox_target = mx.sym.Variable(name='bbox_target')
             rpn_bbox_weight = mx.sym.Variable(name='bbox_weight')
             gt_boxes = mx.sym.Variable(name='gt_boxes')
+            #rpn_cls_score:(1,2,(AH1W1+AH2W2+...))
+            #rpn_cls_score:(1,4A,(H1W1+H2W2+...))
             rpn_cls_score = mx.sym.Concat(rpn_cls_score_p2,rpn_cls_score_p3,rpn_cls_score_p4,rpn_cls_score_p5,rpn_cls_score_p6,dim = 2)
             rpn_bbox_loss = mx.sym.Concat(rpn_bbox_loss_p2,rpn_bbox_loss_p3,rpn_bbox_loss_p4,rpn_bbox_loss_p5,rpn_bbox_loss_p6,dim = 2)
 
