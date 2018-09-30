@@ -1,7 +1,7 @@
 import mxnet as mx
 import numpy as np
 from distutils.util import strtobool
-DEBUG = True
+DEBUG = False
 if DEBUG:
     from lib.bbox.bbox_transform import bbox_pred, clip_boxes
     from lib.rpn.generate_anchor import generate_anchors
@@ -62,7 +62,6 @@ class PyramidProposalOperator(mx.operator.CustomOp):
             'stride4': in_data[5],
         }
         #print(in_data[0])
-        print(in_data[8])#,in_data[8].shape)
         pre_nms_topN = self._rpn_pre_nms_top_n
         post_nms_topN = self._rpn_post_nms_top_n
         min_size = self._rpn_min_size
@@ -140,6 +139,7 @@ class PyramidProposalOperator(mx.operator.CustomOp):
     def backward(self, req, out_grad, in_data, out_data, in_grad, aux):
         for i in range(len(in_grad)):
             self.assign(in_grad[i],req[i],0)
+
 
 @mx.operator.register('pyramid_proposal')
 class PyramidProposalProp(mx.operator.CustomOpProp):

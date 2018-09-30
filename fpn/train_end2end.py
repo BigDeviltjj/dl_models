@@ -3,6 +3,7 @@ import mxnet as mx
 import numpy as np
 import os
 import sys
+import re
 import shutil
 import pprint
 from config.config import config, update_config
@@ -14,6 +15,7 @@ from utils.load_model import load_param
 from symbols import resnet_v1_101_fpn_rcnn
 from core.loader import PyramidAnchorIterator
 from core import metric
+DEBUG = False
 def parse_args():
     parser = argparse.ArgumentParser(description='train fpn network')
     parser.add_argument('--cfg',help='configure file name',type = str, default = './cfgs/resnet_v1_101_coco_trainval_fpn_end2end_ohem.yaml')
@@ -32,6 +34,23 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     sym_instance = resnet_v1_101_fpn_rcnn.resnet_v1_101_fpn_rcnn()
     sym = sym_instance.get_symbol(config, is_train = True)
 
+    if DEBUG:
+        np.random.seed(123)
+        data_shape = {}
+        data_shape['data'] = (1,3,1024,1024)
+        data_shape['im_info'] = (1024,1024,1)
+        data_shape['gt_boxes'] = (1,100,5)
+        data_shape['label'] = (1,(3*(256*256+128*128+64*64+32*32+16*16)))
+        data_shape['bbox_target'] = (1,12,(256*256+128*128+64*64+32*32+16*16))
+        data_shape['bbox_weight'] = (1,12,(256*256+128*128+64*64+32*32+16*16))
+        exe = sym.simple_bind(ctx = mx.gpu(0),**data_shape)
+        data ={}
+        for k,v in data_shape.items():
+            data[k] = mx.nd.array(np.random.randn(*v))
+        exe.forward(is_train = True,**data)
+        print(exe.outputs)
+        exe.backward()
+        print((exe.grad_arrays))
     feat_pyramid_level = np.log2(config.network.RPN_FEAT_STRIDE).astype(int)
     feat_sym = [sym.get_internals()['rpn_cls_score_p'+str(x)+'_output'] for x in feat_pyramid_level]
 
@@ -58,7 +77,7 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     max_data_shape.append(('gt_boxes',(config.TRAIN.BATCH_IMAGES,100,5)))
     print('providing maximum shape', max_data_shape, max_label_shape)
 
-    data_shape_dict = dict(train_data.provide_data_single + train_data.provide_label_single)
+    data_shape_dict = dict(train_data.provide_data + train_data.provide_label)
     pprint.pprint(data_shape_dict)
     sym_instance.infer_shape(data_shape_dict)
 
@@ -66,16 +85,23 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
         print('continue training from ',begin_epoch)
         arg_params, aux_params = load_param(prefix, begin_epoch, convert = True)
     else:
-        arg_params, aux_params = load_param(pretrained, epoch, convert = True)
-        sym_instance.init_weight(config, arg_params, aux_params)
+        arg_params, aux_params = load_param(pretrained, epoch, convert=True)
+        #sym_instance.init_weight(config, arg_params, aux_params)
 
-    sym_instance.check_parameter_shapes(arg_params, aux_params, data_shape_dict)
+    #sym_instance.check_parameter_shapes(arg_params, aux_params, data_shape_dict)
     fixed_param_prefix = config.network.FIXED_PARAMS
-    data_names = [k[0] for k in train_data.provide_data_single]
-    label_names = [k[0] for k in tran_data.provide_label_single]
-
-    mod = Module(sym,data_names = data_names,label_names = label_names,
-                 logger = logger, context = ctx, fixed_param_prefix = fixed_param_prefix)
+    data_names = [k[0] for k in train_data.provide_data]
+    label_names = [k[0] for k in train_data.provide_label]
+    
+    fixed_param_names = list()
+    if fixed_param_prefix is not None:
+        for name in sym.list_arguments():
+            for prefix in fixed_param_prefix:
+                if prefix in name:
+                    fixed_param_names.append(name)    
+                    break
+    mod = mx.mod.Module(sym,data_names = data_names,label_names = label_names,
+                 logger = logger, context = ctx, fixed_param_names = fixed_param_names)
         
     rpn_eval_metric = metric.RPNAccMetric()
     rpn_cls_metric = metric.RPNLogLossMetric()
@@ -88,7 +114,7 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     eval_metrics = mx.metric.CompositeEvalMetric()
     for child_metric in [rpn_eval_metric, rpn_cls_metric, rpn_bbox_metric, rpn_fg_metric, eval_fg_metric, eval_metric, cls_metric, bbox_metric]:
         eval_metrics.add(child_metric)
-    batch_end_callback = [mx.callback.Speedometer(train_data.batch_size,frequent = args.frequent)]
+    batch_end_callback = [mx.callback.Speedometer(train_data.batch_size,frequent = 100)]
     epoch_end_callback = [mx.callback.do_checkpoint(prefix, period = 1)]
     base_lr = lr
     lr_factor = config.TRAIN.lr_factor
@@ -97,7 +123,7 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     lr = base_lr * (lr_factor **(len(lr_epoch) - len(lr_epoch_diff)))
     lr_iters = [int(epoch * len(roidb)/batch_size) for epoch in lr_epoch_diff]
     print('lr',lr,'lr_epoch_diff',lr_epoch_diff,'lr_iters',lr_iters)
-    lr_scheduler = mxnet.lr_scheduler.MultiFactorScheduler(step = lr_iters,factor = lr_factor)
+    lr_scheduler = mx.lr_scheduler.MultiFactorScheduler(step = lr_iters,factor = lr_factor)
     optimizer_params = {"momentum":config.TRAIN.momentum,
                         'wd':config.TRAIN.wd,
                         'learning_rate':lr,
@@ -112,7 +138,8 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
             optimizer = 'sgd',optimizer_params = optimizer_params,
             arg_params = arg_params, aux_params = aux_params, 
             begin_epoch = begin_epoch,
-            num_epoch = end_epoch)
+            num_epoch = end_epoch,
+            allow_missing = True)
 def main():
     args = parse_args()
     print('called with argument:',args)

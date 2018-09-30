@@ -21,7 +21,6 @@ def sample_rois(rois, fg_rois_per_image, rois_per_image, num_classes, cfg,
     bg_rois_per_this_image = np.minimum(bg_rois_per_this_image, bg_indexes.size)
     if len(bg_indexes) > bg_rois_per_this_image:
         bg_indexes = npr.choice(bg_indexes, size = bg_rois_per_this_image, replace = False)
-    print("fg_indexes is:", fg_indexes)
     keep_indexes = np.append(fg_indexes,bg_indexes)
 
     while keep_indexes.shape[0] < rois_per_image:     #一直补充到满足每个batch的长度

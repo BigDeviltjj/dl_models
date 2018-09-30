@@ -54,19 +54,11 @@ class PyramidAnchorIterator(mx.io.DataIter):
     
     @property
     def provide_data(self):
-        return [[(k,v.shape)for k,v in zip(self.data_name, self.data[i])] for i in range(len(self.data))]
+        return [(k,v.shape) for k,v in zip(self.data_name, self.data)]
 
     @property
     def provide_label(self):
-        return [[(k,v.shape) for k,v in zip(self.label_name,self.label[i])] for i in range(len(self.data))]
-
-    @property
-    def provide_data_single(self):
-        return [(k,v.shape) for k,v in zip(self.data_name, self.data[0])]
-
-    @property
-    def provide_label_single(self):
-        return [(k,v.shape) for k,v in zip(self.label_name, self.label[0])]
+        return [(k,v.shape) for k,v in zip(self.label_name, self.label)]
 
     def reset(self):
         self.cur = 0
@@ -140,10 +132,10 @@ class PyramidAnchorIterator(mx.io.DataIter):
             iroidb = [roidb[i] for i in range(islice.start, islice.stop)]
             rst.append(par_assign_anchor_wrapper(self.cfg, iroidb, self.feat_sym, self.feat_strides,
                                                  self.anchor_scales, self.anchor_ratios, self.allowed_border))
-            all_data = [_['data'] for _ in rst]
-            all_label = [_['label'] for _ in rst]
-            self.data = [[mx.nd.array(data[key]) for key in self.data_name] for data in all_data]
-            self.label = [[mx.nd.array(label[key]) for key in self.label_name] for label in all_label]
+        all_data = [_['data'] for _ in rst]
+        all_label = [_['label'] for _ in rst]
+        self.data = [[mx.nd.array(data[key]) for key in self.data_name] for data in all_data][0]
+        self.label = [[mx.nd.array(label[key]) for key in self.label_name] for label in all_label][0]
 
 
         

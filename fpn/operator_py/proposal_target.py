@@ -6,10 +6,11 @@ import pickle
 
 from core.rcnn import sample_rois
 import sys
+import yaml
+
 DEBUG = False
 if DEBUG:
     sys.path.insert(0,'lib/')
-    import yaml
     from easydict import EasyDict as edict
 
 class ProposalTargetOperator(mx.operator.CustomOp):
@@ -57,6 +58,7 @@ class ProposalTargetOperator(mx.operator.CustomOp):
     def backward(self, req, out_grad, in_data, out_data, in_grad, aux):
         for i in range(len(in_grad)):
             self.assign(in_grad[i],req[i],0)
+        print('proposal_target_ok')
 
 
 @mx.operator.register('proposal_target')
@@ -90,7 +92,7 @@ class ProposalTargetProp(mx.operator.CustomOpProp):
     def create_operator(self, ctx,shapes,dtypes):
         return ProposalTargetOperator(self._num_classes,self._batch_images, self._batch_rois, self._cfg,self._fg_fraction)
 
-    def declare_backward_dependency(self, out_grad,in_data,out_data):
+    def declare_backward_dependency(self, out_grad, in_data, out_data):
         return []
 
 

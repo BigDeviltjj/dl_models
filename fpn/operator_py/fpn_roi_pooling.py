@@ -2,7 +2,7 @@ import mxnet as mx
 import numpy as np
 #from mxnet.contrib import autograd
 import gc
-DEBUG = False
+DEBUG = True
 class FPNROIPoolingOperator(mx.operator.CustomOp):
     def __init__(self, feat_strides, pooled_height, pooled_width, output_dim):
         self.pooled_height = pooled_height
@@ -62,6 +62,7 @@ class FPNROIPoolingOperator(mx.operator.CustomOp):
 
         for i in range(0,self.num_strides):
             self.assign(in_grad[i], req[i], self.in_grad_hist_list[i])
+
         gc.collect()
 
 @mx.operator.register('fpn_roi_pooling')
@@ -91,8 +92,8 @@ class FPNROIPoolingProp(mx.operator.CustomOpProp):
         return FPNROIPoolingOperator(self.feat_strides, self.pooled_height, self.pooled_width, self.output_dim)
 
     def declare_backward_dependency(self, out_grad, in_data, out_data):
-        return [out_grad[0]]
-
+        #return [out_grad[0]]
+        return []
 
 if __name__ == "__main__":
     if DEBUG:
@@ -120,9 +121,9 @@ if __name__ == "__main__":
         exe = roi_pool.simple_bind(ctx = mx.cpu(),**data_shape)
         outputs = exe.forward(is_train = True,**data)
         exe.backward()
-        #print(outputs)
+        print(outputs)
         g = exe.grad_arrays[0].asnumpy()
-        #print(np.sum(g==4.),np.sum(g==2.),np.sum(g==1.),np.sum(g==0.))
+        print(np.sum(g==4.),np.sum(g==2.),np.sum(g==1.),np.sum(g==0.))
         #print(np.where(g==3.)[0])
         #print(np.where(g==2.)[0])
         #print(np.where(g==1.)[0])
