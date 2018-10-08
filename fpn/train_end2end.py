@@ -34,23 +34,7 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     sym_instance = resnet_v1_101_fpn_rcnn.resnet_v1_101_fpn_rcnn()
     sym = sym_instance.get_symbol(config, is_train = True)
 
-    if DEBUG:
-        np.random.seed(123)
-        data_shape = {}
-        data_shape['data'] = (1,3,1024,1024)
-        data_shape['im_info'] = (1024,1024,1)
-        data_shape['gt_boxes'] = (1,100,5)
-        data_shape['label'] = (1,(3*(256*256+128*128+64*64+32*32+16*16)))
-        data_shape['bbox_target'] = (1,12,(256*256+128*128+64*64+32*32+16*16))
-        data_shape['bbox_weight'] = (1,12,(256*256+128*128+64*64+32*32+16*16))
-        exe = sym.simple_bind(ctx = mx.gpu(0),**data_shape)
-        data ={}
-        for k,v in data_shape.items():
-            data[k] = mx.nd.array(np.random.randn(*v))
-        exe.forward(is_train = True,**data)
-        print(exe.outputs)
-        exe.backward()
-        print((exe.grad_arrays))
+
     feat_pyramid_level = np.log2(config.network.RPN_FEAT_STRIDE).astype(int)
     feat_sym = [sym.get_internals()['rpn_cls_score_p'+str(x)+'_output'] for x in feat_pyramid_level]
 
@@ -102,7 +86,10 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
                     break
     mod = mx.mod.Module(sym,data_names = data_names,label_names = label_names,
                  logger = logger, context = ctx, fixed_param_names = fixed_param_names)
-        
+
+
+
+
     rpn_eval_metric = metric.RPNAccMetric()
     rpn_cls_metric = metric.RPNLogLossMetric()
     rpn_bbox_metric = metric.RPNL1LossMetric()
@@ -114,7 +101,7 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     eval_metrics = mx.metric.CompositeEvalMetric()
     for child_metric in [rpn_eval_metric, rpn_cls_metric, rpn_bbox_metric, rpn_fg_metric, eval_fg_metric, eval_metric, cls_metric, bbox_metric]:
         eval_metrics.add(child_metric)
-    batch_end_callback = [mx.callback.Speedometer(train_data.batch_size,frequent = 100)]
+    batch_end_callback = [mx.callback.Speedometer(train_data.batch_size,frequent = 1,auto_reset = False)]
     epoch_end_callback = [mx.callback.do_checkpoint(prefix, period = 1)]
     base_lr = lr
     lr_factor = config.TRAIN.lr_factor
@@ -132,6 +119,24 @@ def train_net(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
         
     if not isinstance(train_data,mx.io.PrefetchingIter):
         train_data = mx.io.PrefetchingIter(train_data)
+    if DEBUG:
+        train_data.reset()
+        it = train_data.next()
+        mod.bind(data_shapes=train_data.provide_data, label_shapes=train_data.provide_label,
+                  for_training=True, force_rebind=False)
+        mod.init_params(arg_params=arg_params, aux_params=aux_params,
+                         allow_missing=True)
+        mod.init_optimizer(optimizer_params = optimizer_params)
+        eval_metrics.reset()
+        next_data_batch = train_data.next()
+
+        for i in range(100):
+            print(i)
+            mod.forward_backward(next_data_batch)
+            mod.update()
+            mod.update_metric(eval_metrics, next_data_batch.label)
+            print(eval_metrics)
+
 
     mod.fit(train_data,eval_metric = eval_metrics,epoch_end_callback=epoch_end_callback,
             batch_end_callback = batch_end_callback, 

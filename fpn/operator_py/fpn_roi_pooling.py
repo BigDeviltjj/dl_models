@@ -68,7 +68,7 @@ class FPNROIPoolingOperator(mx.operator.CustomOp):
 @mx.operator.register('fpn_roi_pooling')
 class FPNROIPoolingProp(mx.operator.CustomOpProp):
     def __init__(self, feat_strides='(4,8,16,32)',pooled_height = '7',pooled_width='7',output_dim='256'):
-        super(FPNROIPoolingProp,self).__init__(need_top_grad = True)
+        super(FPNROIPoolingProp,self).__init__()
         self.pooled_height = int(pooled_height)
         self.pooled_width = int(pooled_width)
         self.feat_strides = np.fromstring(feat_strides[1:-1],dtype = int, sep=',')
@@ -91,9 +91,8 @@ class FPNROIPoolingProp(mx.operator.CustomOpProp):
     def create_operator(self, ctx, shapes, dtypes):
         return FPNROIPoolingOperator(self.feat_strides, self.pooled_height, self.pooled_width, self.output_dim)
 
-    def declare_backward_dependency(self, out_grad, in_data, out_data):
-        #return [out_grad[0]]
-        return []
+    # def declare_backward_dependency(self, out_grad, in_data, out_data):
+    #     return [out_grad[0]]
 
 if __name__ == "__main__":
     if DEBUG:

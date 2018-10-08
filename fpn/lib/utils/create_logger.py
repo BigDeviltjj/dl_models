@@ -18,8 +18,20 @@ def create_logger(root_output_path, cfg, image_set):
 
     log_file = '{}_{}.log'.format(cfg_name, time.strftime('%Y-%m-%d-%H-%M'))
     head = '%(asctime)-15s %(message)s'
-    logging.basicConfig(filename=os.path.join(final_output_path, log_file), format=head)
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
-
+    logger = logging.getLogger()  # 不加名称设置root logger
+    logger.setLevel(logging.DEBUG)
+    formatter = logging.Formatter(
+        head,
+        datefmt='%Y-%m-%d %H:%M:%S')
+    # 使用FileHandler输出到文件
+    fh = logging.FileHandler(os.path.join(final_output_path, log_file))
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(formatter)
+    # 使用StreamHandler输出到屏幕
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(formatter)
+    # 添加两个Handler
+    logger.addHandler(ch)
+    logger.addHandler(fh)
     return logger, final_output_path

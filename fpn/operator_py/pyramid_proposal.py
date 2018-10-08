@@ -145,7 +145,7 @@ class PyramidProposalOperator(mx.operator.CustomOp):
 class PyramidProposalProp(mx.operator.CustomOpProp):
     def __init__(self, feat_stride = '(4,8,16,32,64)',scales = '(8)', ratios='(0.5,1,2)',output_score='False',
                  rpn_pre_nms_top_n='12000', rpn_post_nms_top_n='2000', threshold='0.3', rpn_min_size='16',output_pyramid_rois='False'):
-        super(PyramidProposalProp, self).__init__(need_top_grad=False)
+        super(PyramidProposalProp, self).__init__()
         self._feat_stride = feat_stride
         self._scales = scales
         self._ratios = ratios
@@ -191,8 +191,8 @@ class PyramidProposalProp(mx.operator.CustomOpProp):
         return PyramidProposalOperator(self._feat_stride, self._scales, self._ratios,self._output_score,
                                        self._rpn_pre_nms_top_n,self._rpn_post_nms_top_n,self._threshold,self._rpn_min_size)
 
-    def declare_backward_dependency(self, out_grad, in_data, out_data):
-        return []
+    # def declare_backward_dependency(self, out_grad, in_data, out_data):
+    #     return []
 
 
 if __name__ == '__main__':
