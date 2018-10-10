@@ -1,5 +1,5 @@
 import numpy as np
-
+from .bbox import bbox_overlaps_cython
 def bbox_transform(ex_rois,gt_rois):
     ex_ctrx = (ex_rois[:,0] + ex_rois[:,2])/2
     ex_ctry = (ex_rois[:,1] + ex_rois[:,3])/2
@@ -34,10 +34,14 @@ def clip_boxes(boxes, im_shape):
     boxes[:,3::4] = np.maximum(np.minimum(boxes[:,3::4],im_shape[0] - 1), 0)
     return boxes
 
+#def bbox_overlaps(bboxes,query_boxes):
+#    ret = np.zeros((bboxes.shape[0],query_boxes.shape[0]))
+#    for i,b in enumerate(bboxes):
+#        w = np.maximum(np.minimum(b[2],query_boxes[:,2]) - np.maximum(b[0],query_boxes[:,0]) + 1,0.)
+#        h = np.maximum(np.minimum(b[3],query_boxes[:,3]) - np.maximum(b[1],query_boxes[:,1]) + 1,0.)
+#        ret[i] = (w*h) / ((b[2]-b[0]+1)*(b[3]-b[1]+1)+(query_boxes[:,2]-query_boxes[:,0]+1)*(query_boxes[:,3]-query_boxes[:,1]+1)-(w*h))
+#    return ret
+
+    
 def bbox_overlaps(bboxes,query_boxes):
-    ret = np.zeros((bboxes.shape[0],query_boxes.shape[0]))
-    for i,b in enumerate(bboxes):
-        w = np.maximum(np.minimum(b[2],query_boxes[:,2]) - np.maximum(b[0],query_boxes[:,0]) + 1,0.)
-        h = np.maximum(np.minimum(b[3],query_boxes[:,3]) - np.maximum(b[1],query_boxes[:,1]) + 1,0.)
-        ret[i] = (w*h) / ((b[2]-b[0]+1)*(b[3]-b[1]+1)+(query_boxes[:,2]-query_boxes[:,0]+1)*(query_boxes[:,3]-query_boxes[:,1]+1)-(w*h))
-    return ret
+    return bbox_overlaps_cython(bboxes,query_boxes)

@@ -7,4 +7,4 @@ fpn/model/
 *.o
 *.pkl
 *.log
-
+/detnet/

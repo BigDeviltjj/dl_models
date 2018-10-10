@@ -1,22 +1,24 @@
 import numpy as np
-
-def nms(bboxes,threshold = 0.7):
-    def IOU(box, bboxes):
-        w = np.maximum(np.minimum(box[2],bboxes[:,2]) - np.maximum(box[0],bboxes[:,0]) + 1,0)
-        h = np.maximum(np.minimum(box[3],bboxes[:,3]) - np.maximum(box[1],bboxes[:,1]) + 1,0)
-        return (h * w) / ((box[2] - box[0] + 1) * (box[3] - box[1] + 1) + (bboxes[:,2] - bboxes[:,0] + 1) * (bboxes[:,3] - bboxes[:,1] + 1) - w * h)
-    if bboxes.size == 0:
-        return []
-    idx = bboxes[:,4].ravel().argsort()[::-1]
-
-    keep = []
-    while idx.size > 0:
-        keep.append(idx[0])
-        overlap = IOU(bboxes[idx[0],:4],bboxes[idx[1:],:4])
-        inds = np.where(overlap <= threshold)[0]
-        idx = idx[inds + 1]
-
-    return keep
+from .gpu_nms import gpu_nms
+def nms(bboxes,threshold ,device_id):
+    return gpu_nms(bboxes,threshold,device_id)
+#def nms(bboxes,threshold = 0.7):
+#    def IOU(box, bboxes):
+#        w = np.maximum(np.minimum(box[2],bboxes[:,2]) - np.maximum(box[0],bboxes[:,0]) + 1,0)
+#        h = np.maximum(np.minimum(box[3],bboxes[:,3]) - np.maximum(box[1],bboxes[:,1]) + 1,0)
+#        return (h * w) / ((box[2] - box[0] + 1) * (box[3] - box[1] + 1) + (bboxes[:,2] - bboxes[:,0] + 1) * (bboxes[:,3] - bboxes[:,1] + 1) - w * h)
+#    if bboxes.size == 0:
+#        return []
+#    idx = bboxes[:,4].ravel().argsort()[::-1]
+#
+#    keep = []
+#    while idx.size > 0:
+#        keep.append(idx[0])
+#        overlap = IOU(bboxes[idx[0],:4],bboxes[idx[1:],:4])
+#        inds = np.where(overlap <= threshold)[0]
+#        idx = idx[inds + 1]
+#
+#    return keep
 
     
 # def nms(dets, thresh):

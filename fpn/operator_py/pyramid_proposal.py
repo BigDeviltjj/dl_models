@@ -118,7 +118,7 @@ class PyramidProposalOperator(mx.operator.CustomOp):
 
         #step 6
         det = np.hstack((proposals, scores)).astype(np.float32)
-        keep = nms(det, self._threshold)
+        keep = nms(det, self._threshold,in_data[0].context.device_id)
         #step 7
         if post_nms_topN > 0:
             keep = keep[:post_nms_topN]
